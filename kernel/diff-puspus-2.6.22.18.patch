@@ -1,0 +1,14 @@
+--- linux/drivers/video/geode/gx1fb_core.c	2008-02-11 08:31:19.000000000 +0100
++++ gx1fb_core.c	2008-03-05 16:59:27.000000000 +0100
+@@ -25,7 +25,10 @@
+ #include "display_gx1.h"
+ #include "video_cs5530.h"
+ 
+-static char mode_option[32] = "640x480-16@60";
++/* IBM Netvista 8363 patch to retain compatibility with modern monitors*/
++/* static char mode_option[32] = "640x480-16@60"; */
++static char mode_option[32] = "1024x768-16@75";
++
+ static int  crt_option = 1;
+ static char panel_option[32] = "";
+ 

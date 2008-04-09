@@ -1,0 +1,81 @@
+
+================================================================================
+ Welcome to PusPus - the GNU/Linux distribution for the IBM NetVist Thin Client
+================================================================================
+
+ Here's all you need to build Pus-Pus for the Netvista automagically.
+ Please follow the steps detailed here, and read carefully the requirements
+ section first to avoid problems.
+
+ The build process can take quite a long time especially on the first invocation.
+
+REQUIREMENTS
+------------
+ A decent Internet connection (at least for the "Prepare" stage)
+ Kernel compilation tools (GNU C/C++ at least version 3.2, make, binutils, etc)
+ wget
+ sudo - and have your account in the sudoers file
+ debootstrap
+ about 1.2GB of free disk space on the build computer
+ mkisofs
+
+IF YOU ARE VERY IMPATIENT
+-------------------------
+ Make sure your Internet connection is up and then type:
+
+   make puspus
+
+ This will build the kernel together with the puspus root file system.
+ Chances are you want to "burn" puspus into a Compact Flash disk to then
+ boot it up. In this case, insert it in your system and find out what
+ device your system assigns to it to change the Makefile accordingly.
+
+ If for example the Compact flash is mapped to /dev/sda, I would
+ change the variable CFLASH_DEV to look like this:
+
+  CFLASH_DEV=/dev/sda1
+
+ Make /dev/sda1 be a Linux partition type (83) with the help of fdisk,
+ and then type:
+
+   make cflash
+
+ WARNING: make cflash will format your Compact Flash drive and install
+ pus-pus from scratch. Be careful, you have been warned!
+
+ On completion you can insert it into the Netvista 8363 and boot it up.
+
+ Enjoy!
+
+I WAS VERY IMPATIENT, WHAT HAPPENED?
+------------------------------------
+ The complete build process did the following things:
+
+   1. Compiled a few utilities needed in order to build puspus
+   2. Downloaded the Linux kernel sources and patched them for Netvista 8363
+   3. Downloaded a minimal Debian etch distribution and saved it in a tarball
+
+   4. Configured and compiled the Linux kernel with additional drivers
+   5. Created a minimal root file system based on Debian Etch
+   6. Configured the installation minimum settings (user accounts, networking, startup)
+
+ Steps 1 to 3 are needed only once, while the remaining 4 to 6 can be repeated multiple
+ times when you customize the Linux kernel or the root file system.
+
+I WANT TO CUSTOMIZE PUS-PUS MYSELF
+----------------------------------
+ Play around with "make netvistaconfig". Avoid using linux's make menuconfig, as puspus
+ forces the make process to use an alternate output directory instead.
+
+ Once you have set your kernel configuration,  call "make kernel && make kernel-cflash" 
+ from the root directory. Have the CF ready, and the kernel image together with the kernel
+ modules will be updated to the CF disk. Nothing will be touched outside this scope. This
+ is very handy when you want to upgrade a kernel without disrupting your puspus installation.
+
+ If you need to play with the distribution itself, remember that "make cflash" will
+ update your Compact flash drive with the latest compiled kernel and modules, together
+ with whatever you have in etch/etch.tar. This is the equivalent of installing pus-pus
+ Debian etch from scratch.
+
+ REMEMBER: "make cflash" always formats the drive. All previous data will be lost,
+ while "make kernel-cflash" will only update the kernel image and its modules.
