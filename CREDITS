@@ -17,6 +17,11 @@
    email: sebastiasebas@gmail.com
    desc: Resources and pointers to wireless USB dongles supported on linux
 
+   name: Lubomir Kundrak
+   country: Germany
+   lkundrak@redhat.com
+   desc: Hints on Netvista internal hardware, makefile updates
+
  ---------------------------------------------------------------------------
 
  Thanks to everyone!

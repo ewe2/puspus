@@ -20,6 +20,7 @@ KERNEL2X00=$(VMLINUX_OUT)/kernel.2x00
 ETCH=$(CURDIR)/etch
 ETCHTAR=$(ETCH)/etch.tar
 
+DEBOOTSTRAP=/usr/sbin/debootstrap
 ROOTFS=rootfs
 ROOTFS_CFILE=$(ROOTFS)/etc/pus-pus-release
 ROOTFS_CFILE_TEMP=pus-pus-release.temp
@@ -34,6 +35,8 @@ PUSIMAGE_CFILE=boot/$(PUSIMAGE).img
 PUSIMAGE_MD5SUM=boot/$(PUSIMAGE).md5
 
 DEVLOOP=/dev/loop0
+
+SUDO=sudo env PATH=/bin:/sbin:/usr/bin:/usr/sbin
 
 #
 # Placeholder rules for big jobs
@@ -70,16 +73,16 @@ kernel: $(VMLINUX_IMAGE)
 $(VMLINUX_IMAGE): $(VMLINUX_CONFIG)
 
 	@echo Building the linux kernel for pus-pus
-	$(MAKE) -C kernel/linux
+	$(MAKE) ARCH=i386 -C kernel/linux
 
 	@echo Making pus-pus specific drivers
-	$(MAKE) -C pusdrivers modules INSTALL_MOD_PATH=$(VMLINUX_OUT) KERNEL_PATH=$(KERNEL_PATH) LINUX_SRC=$(KERNEL_PATH)
+	$(MAKE) ARCH=i386 -C pusdrivers modules INSTALL_MOD_PATH=$(VMLINUX_OUT) KERNEL_PATH=$(KERNEL_PATH) LINUX_SRC=$(KERNEL_PATH)
 
 	@echo Installing the kernel modules
-	$(MAKE) -C kernel/linux INSTALL_MOD_PATH=$(VMLINUX_OUT) modules_install
+	$(MAKE) ARCH=i386 -C kernel/linux INSTALL_MOD_PATH=$(VMLINUX_OUT) modules_install
 
 	@echo Installing pus-pus specific drivers
-	$(MAKE) -C pusdrivers install INSTALL_MOD_PATH=$(VMLINUX_OUT) KERNEL_PATH=$(KERNEL_PATH) LINUX_SRC=$(KERNEL_PATH)
+	$(MAKE) ARCH=i386 -C pusdrivers install INSTALL_MOD_PATH=$(VMLINUX_OUT) KERNEL_PATH=$(KERNEL_PATH) LINUX_SRC=$(KERNEL_PATH)
 
 	@echo Saving and Patching the kernel image
 	cp $(VMLINUX_IMAGE) $(KERNEL2X00)
@@ -95,20 +98,20 @@ rootfs: $(ROOTFS_CFILE)
 $(ROOTFS_CFILE): $(KERNEL2X00) $(ETCHTAR)
 
 	@echo "Building the puspus root filesystem version $(PUSPUS_VERSION).$(PUSPUS_SUBLEVEL)"
-	sudo rm -rf $(ROOTFS)/*
-	sudo debootstrap --verbose --unpack-tarball $(ETCHTAR) --include=$(INCLUDE_PKGS) etch $(ROOTFS)
+	$(SUDO) rm -rf $(ROOTFS)/*
+	$(SUDO) $(DEBOOTSTRAP) --arch i386 --verbose --unpack-tarball $(ETCHTAR) --include=$(INCLUDE_PKGS) etch $(ROOTFS)
 
 	@echo Customizing some basic system settings
 	echo puspus > hostname.temp
-	sudo cp hostname.temp $(ROOTFS)/etc/hostname
+	$(SUDO) cp hostname.temp $(ROOTFS)/etc/hostname
 	rm hostname.temp
 
 	@echo "10.1.1.10 puspus" > hosts.temp
-	sudo cp hosts.temp $(ROOTFS)/etc/hosts
+	$(SUDO) cp hosts.temp $(ROOTFS)/etc/hosts
 	rm hosts.temp
 
 	@echo "proc            /proc           proc    defaults        0       0" >> fstab.temp
-	sudo cp fstab.temp $(ROOTFS)/etc/fstab
+	$(SUDO) cp fstab.temp $(ROOTFS)/etc/fstab
 	rm fstab.temp
 
 	echo "auto lo" > interfaces.temp
@@ -120,28 +123,28 @@ $(ROOTFS_CFILE): $(KERNEL2X00) $(ETCHTAR)
 	echo "iface eth2 inet static" >> interfaces.temp
 	echo "address 10.1.1.10" >> interfaces.temp
 	echo "netmask 255.255.255.0" >> interfaces.temp
-	sudo cp interfaces.temp $(ROOTFS)/etc/network/interfaces
+	$(SUDO) cp interfaces.temp $(ROOTFS)/etc/network/interfaces
 	rm interfaces.temp
 
 	@echo Creating user accounts
-	sudo chroot $(ROOTFS) useradd -m netvista
-	sudo chroot $(ROOTFS) usermod --password `openssl passwd puspus` netvista
-	sudo chroot $(ROOTFS) usermod --password `openssl passwd toor` root
+	$(SUDO) chroot $(ROOTFS) useradd -m netvista
+	$(SUDO) chroot $(ROOTFS) usermod --password `openssl passwd puspus` netvista
+	$(SUDO) chroot $(ROOTFS) usermod --password `openssl passwd toor` root
 
 	@echo Copying the kernel image and the kernel modules
-	sudo cp $(KERNEL2X00) $(ROOTFS)
-	sudo cp -Ra boot/lib/* $(ROOTFS)/lib/
+	$(SUDO) cp $(KERNEL2X00) $(ROOTFS)
+	$(SUDO) cp -Ra boot/lib/* $(ROOTFS)/lib/
 
 	@echo Copying and installing extra packages
-	sudo chroot $(ROOTFS) mkdir /root/debian-extra
-	-sudo cp -Rv $(ETCH)/extra/*deb $(ROOTFS)/root/debian-extra
-	-sudo chroot $(ROOTFS) dpkg -i --recursive root/debian-extra
+	$(SUDO) chroot $(ROOTFS) mkdir /root/debian-extra
+	-$(SUDO) cp -Rv $(ETCH)/extra/*deb $(ROOTFS)/root/debian-extra
+	-$(SUDO) chroot $(ROOTFS) dpkg -i --recursive root/debian-extra
 
 	@echo Creating version control file
 	echo "Pus-Pus Release $(PUSPUS_VERSION).$(PUSPUS_SUBLEVEL)" > $(ROOTFS_CFILE_TEMP)
 	echo "Built on $(CURTIMESTAMP)" >> $(ROOTFS_CFILE_TEMP)
-	sudo cp $(ROOTFS_CFILE_TEMP) $(ROOTFS_CFILE)
-	sudo touch $(ROOTFS_CFILE)
+	$(SUDO) cp $(ROOTFS_CFILE_TEMP) $(ROOTFS_CFILE)
+	$(SUDO) touch $(ROOTFS_CFILE)
 	rm $(ROOTFS_CFILE_TEMP)
 	@echo root file system created - you can now make cflash and/or pusiso!
 
@@ -151,18 +154,18 @@ $(ROOTFS_CFILE): $(KERNEL2X00) $(ETCHTAR)
 kernel-cflash:
 
 	@echo Mounting Compact flash and updating the kernel
-	-sudo umount cflash
+	-$(SUDO) umount cflash
 	-rm -rf cflash
 	-mkdir cflash
 
-	sudo mount $(CFLASH_DEV) $(CFLASH_MOUNT)
+	$(SUDO) mount $(CFLASH_DEV) $(CFLASH_MOUNT)
 
-	sudo cp $(KERNEL2X00) $(CFLASH_MOUNT)
-	-sudo rm -rf $(CFLASH_MOUNT)/lib/modules/*
-	sudo cp -Ra boot/lib/modules/* $(CFLASH_MOUNT)/lib/modules
+	$(SUDO) cp $(KERNEL2X00) $(CFLASH_MOUNT)
+	-$(SUDO) rm -rf $(CFLASH_MOUNT)/lib/modules/*
+	$(SUDO) cp -Ra boot/lib/modules/* $(CFLASH_MOUNT)/lib/modules
 
-	sudo umount $(CFLASH_MOUNT)
-	-sudo rmdir cflash
+	$(SUDO) umount $(CFLASH_MOUNT)
+	-$(SUDO) rmdir cflash
 	@echo Slide out the Compact Flash and into the Netvista ready to boot!
 
 #
@@ -172,18 +175,18 @@ cflash: $(CFLASH_CFILE)
 $(CFLASH_CFILE): $(ROOTFS_CFILE)
 
 	@echo Preparing the Compact Flash drive...
-	-sudo umount $(CFLASH_MOUNT)
-	-sudo rm -rf $(CFLASH_MOUNT)
-	sudo mke2fs $(CFLASH_DEV)
+	-$(SUDO) umount $(CFLASH_MOUNT)
+	-$(SUDO) rm -rf $(CFLASH_MOUNT)
+	$(SUDO) mke2fs $(CFLASH_DEV)
 
 	@echo Mounting the Compact Flash
 	mkdir $(CFLASH_MOUNT)
-	sudo mount $(CFLASH_DEV) $(CFLASH_MOUNT)
+	$(SUDO) mount $(CFLASH_DEV) $(CFLASH_MOUNT)
 
 	@echo Copying the root file system into the Flash Card
-	sudo cp -v -a -R $(ROOTFS)/* $(CFLASH_MOUNT)
-	sudo umount $(CFLASH_MOUNT)
-	sudo rmdir $(CFLASH_MOUNT)
+	$(SUDO) cp -v -a -R $(ROOTFS)/* $(CFLASH_MOUNT)
+	$(SUDO) umount $(CFLASH_MOUNT)
+	$(SUDO) rmdir $(CFLASH_MOUNT)
 
 	touch $(CFLASH_CFILE)
 	@echo Compact Flash is ready to boot!
@@ -201,15 +204,15 @@ $(PUSIMAGE_CFILE):
 	@echo Building the Imag image
 	dd if=/dev/zero of=$(PUSIMAGE_CFILE) bs=10 count=30MB
 	mke2fs -F $(PUSIMAGE_CFILE)
-	-sudo losetup -d $(DEVLOOP)
-	-sudo losetup $(DEVLOOP) $(PUSIMAGE_CFILE)
+	-$(SUDO) losetup -d $(DEVLOOP)
+	-$(SUDO) losetup $(DEVLOOP) $(PUSIMAGE_CFILE)
 	-mkdir ./pusimage
-	-sudo mount $(DEVLOOP) pusimage
+	-$(SUDO) mount $(DEVLOOP) pusimage
 
-	sudo cp -v -a -R $(ROOTFS)/* ./pusimage
-	sudo umount ./pusimage
+	$(SUDO) cp -v -a -R $(ROOTFS)/* ./pusimage
+	$(SUDO) umount ./pusimage
 	rmdir pusimage
-	sudo losetup -d $(DEVLOOP)
+	$(SUDO) losetup -d $(DEVLOOP)
 	cd boot && md5sum -b $(PUSIMAGE).img > $(PUSIMAGE).md5
 
 	@echo PusPus image version $(PUSPUS_VERSION).$(PUSPUS_SUBLEVEL) has been created
